@@ -4,7 +4,7 @@ import type { Loader, McVersion, Profile } from '@shared/types'
 import { call } from '@/lib/api'
 import { useApp } from '@/lib/store'
 import { ago, playtime, ram } from '@/lib/format'
-import { Background, TopBar } from '@/components/Shell'
+import { TopBar } from '@/components/Shell'
 import { Confirm, Modal, Seg, Spinner, useAction } from '@/components/ui'
 import { versionLabel } from './Home'
 
@@ -79,7 +79,6 @@ export function Profiles() {
 
   return (
     <>
-      <Background dim />
       <TopBar title="Profiller" />
       <div className="page">
         <div className="page-head">

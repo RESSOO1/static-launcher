@@ -2,7 +2,9 @@ import { Component, useEffect, useState, type ReactNode } from 'react'
 import { AlertTriangle, RotateCcw } from 'lucide-react'
 import { useApp } from './lib/store'
 import { on } from './lib/api'
-import { ConsoleDrawer, CrashDialog, Sidebar, Splash, Toasts, UpdateDialog } from './components/Shell'
+import { ConsoleDrawer, CrashDialog, Splash, TitleBar, Toasts, UpdateDialog } from './components/Shell'
+import { Dock } from './components/Dock'
+import { Scene } from './components/Scene'
 import { Wizard } from './components/Wizard'
 import { Home } from './pages/Home'
 import { Profiles } from './pages/Profiles'
@@ -37,6 +39,8 @@ class PageBoundary extends Component<{ children: ReactNode; resetKey: string }, 
   }
 }
 
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
+
 export function App() {
   const { page, settings, accounts } = useApp()
   const [splash, setSplash] = useState(true)
@@ -52,9 +56,8 @@ export function App() {
   }, [settings.animations])
 
   useEffect(() => {
-    document.documentElement.dataset.accent = settings.accent
     document.body.classList.toggle('no-anim', !settings.animations)
-  }, [settings.accent, settings.animations])
+  }, [settings.animations])
 
   const [maxed, setMaxed] = useState(false)
   useEffect(() => on<boolean>('win:maximized', setMaxed), [])
@@ -63,22 +66,27 @@ export function App() {
 
   return (
     <div className={`app ${maxed ? 'maxed' : ''}`}>
-      <Sidebar />
-      <main className="main">
+      <Scene animated={settings.animations && page === 'home' && !reducedMotion} />
+      <TitleBar />
+      <main className="stage">
         <PageBoundary resetKey={page}>
-          <div className={`page ${page === 'home' ? 'flush' : ''}`} key={page} style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            {page === 'home' && <Home />}
-            {page === 'profiles' && <Profiles />}
-            {page === 'store' && <Store />}
-            {page === 'servers' && <Servers />}
-            {page === 'news' && <News />}
-            {page === 'gallery' && <Gallery />}
-            {page === 'account' && <Account />}
-            {page === 'settings' && <Settings />}
-          </div>
+          {page === 'home' ? (
+            <Home />
+          ) : (
+            <section className="sheet glass" key={page}>
+              {page === 'profiles' && <Profiles />}
+              {page === 'store' && <Store />}
+              {page === 'servers' && <Servers />}
+              {page === 'news' && <News />}
+              {page === 'gallery' && <Gallery />}
+              {page === 'account' && <Account />}
+              {page === 'settings' && <Settings />}
+            </section>
+          )}
         </PageBoundary>
         <ConsoleDrawer />
       </main>
+      <Dock />
       <CrashDialog />
       <UpdateDialog blocked={splash || needsSetup} />
       <Toasts />

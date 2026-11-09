@@ -1,20 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Coffee, Cpu, FolderOpen, Gamepad2, Gauge, Info, MemoryStick, Monitor, Palette, RefreshCw, Rocket, Zap } from 'lucide-react'
-import type { Accent, CloseBehavior, PerformancePreset } from '@shared/types'
+import type { CloseBehavior, PerformancePreset } from '@shared/types'
 import { call } from '@/lib/api'
 import { useApp } from '@/lib/store'
 import { ram } from '@/lib/format'
-import { Background, TopBar } from '@/components/Shell'
+import { TopBar } from '@/components/Shell'
 import { Seg, Switch } from '@/components/ui'
 import { suggest } from '@/components/Wizard'
-
-const ACCENTS: { id: Accent; color: string }[] = [
-  { id: 'violet', color: '#8b5cf6' },
-  { id: 'blue', color: '#3b82f6' },
-  { id: 'emerald', color: '#10b981' },
-  { id: 'rose', color: '#f43f5e' },
-  { id: 'amber', color: '#f59e0b' }
-]
 
 export function Settings() {
   const { settings, updateSettings, system, toast, update } = useApp()
@@ -33,7 +25,6 @@ export function Settings() {
 
   return (
     <>
-      <Background dim />
       <TopBar title="Ayarlar" />
       <div className="page">
         <div className="settings">
@@ -183,24 +174,13 @@ export function Settings() {
 
           <div className="set-group">
             <h3>
-              <Palette /> Görünüm ve launcher
+              <Palette /> Launcher
             </h3>
             <div className="card">
               <div className="set-row">
                 <div className="info">
-                  <b>Vurgu rengi</b>
-                  <small>Butonlar, menü ve parıltılar</small>
-                </div>
-                <div className="ctl swatches">
-                  {ACCENTS.map((a) => (
-                    <button key={a.id} className={`swatch ${settings.accent === a.id ? 'on' : ''}`} style={{ background: a.color }} onClick={() => set({ accent: a.id })} aria-label={a.id} />
-                  ))}
-                </div>
-              </div>
-              <div className="set-row">
-                <div className="info">
                   <b>Animasyonlar</b>
-                  <small>Geçişler, parıltılar ve hareketli arka plan</small>
+                  <small>Kıvılcımlar, parıltılar ve geçişler</small>
                 </div>
                 <div className="ctl">
                   <Switch on={settings.animations} onChange={(v) => set({ animations: v })} label="Animasyonlar" />

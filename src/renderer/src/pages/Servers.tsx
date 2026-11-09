@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Plus, RefreshCw, Server, Star, Trash2, Wifi, WifiOff, Play, Copy } from 'lucide-react'
+import { Pencil, Plus, RefreshCw, Server, Star, Trash2, Wifi, WifiOff, Play, Copy } from 'lucide-react'
 import type { ServerDef, ServerStatus } from '@shared/types'
 import { call } from '@/lib/api'
 import { useApp } from '@/lib/store'
-import { Background, TopBar } from '@/components/Shell'
+import { TopBar } from '@/components/Shell'
 import { Empty, Modal, Spinner } from '@/components/ui'
 import { versionLabel } from './Home'
 
@@ -12,6 +12,7 @@ export function Servers() {
   const [servers, setServers] = useState<ServerDef[]>([])
   const [status, setStatus] = useState<Record<string, ServerStatus | 'loading'>>({})
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<ServerDef | null>(null)
   const [joinTarget, setJoinTarget] = useState<ServerDef | null>(null)
 
   const pingAll = useCallback((list: ServerDef[]) => {
@@ -35,7 +36,6 @@ export function Servers() {
 
   return (
     <>
-      <Background dim />
       <TopBar title="Sunucular" />
       <div className="page">
         <div className="page-head">
@@ -89,6 +89,11 @@ export function Servers() {
                         <Copy />
                       </button>
                       {!s.featured && (
+                        <button className="btn sm icon" title="Düzenle" aria-label={`${s.name} sunucusunu düzenle`} onClick={() => setEditing(s)}>
+                          <Pencil />
+                        </button>
+                      )}
+                      {!s.featured && (
                         <button
                           className="btn sm icon danger"
                           title="Kaldır"
@@ -112,11 +117,16 @@ export function Servers() {
           </div>
         )}
       </div>
-      {adding && (
-        <AddServer
-          onClose={() => setAdding(false)}
-          onAdded={() => {
+      {(adding || editing) && (
+        <ServerDialog
+          server={editing ?? undefined}
+          onClose={() => {
             setAdding(false)
+            setEditing(null)
+          }}
+          onDone={() => {
+            setAdding(false)
+            setEditing(null)
             load()
           }}
         />
@@ -138,17 +148,18 @@ export function Servers() {
   )
 }
 
-function AddServer({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
+function ServerDialog({ server, onClose, onDone }: { server?: ServerDef; onClose: () => void; onDone: () => void }) {
   const { toast } = useApp()
-  const [name, setName] = useState('')
-  const [address, setAddress] = useState('')
+  const [name, setName] = useState(server?.name ?? '')
+  const [address, setAddress] = useState(server?.address ?? '')
   const [busy, setBusy] = useState(false)
   const submit = async () => {
     setBusy(true)
     try {
-      await call('servers:add', name || address, address)
-      toast('success', 'Sunucu eklendi')
-      onAdded()
+      if (server) await call('servers:update', server.id, name || address, address)
+      else await call('servers:add', name || address, address)
+      toast('success', server ? 'Sunucu güncellendi' : 'Sunucu eklendi')
+      onDone()
     } catch (e) {
       toast('error', (e as Error).message)
     } finally {
@@ -157,7 +168,7 @@ function AddServer({ onClose, onAdded }: { onClose: () => void; onAdded: () => v
   }
   return (
     <Modal
-      title="Sunucu ekle"
+      title={server ? "Sunucuyu düzenle" : "Sunucu ekle"}
       icon={<Server />}
       onClose={onClose}
       footer={
@@ -166,7 +177,7 @@ function AddServer({ onClose, onAdded }: { onClose: () => void; onAdded: () => v
             Vazgeç
           </button>
           <button className="btn primary" disabled={busy || !address.trim()} onClick={submit}>
-            {busy && <Spinner size={14} />} Ekle
+            {busy && <Spinner size={14} />} {server ? 'Kaydet' : 'Ekle'}
           </button>
         </>
       }

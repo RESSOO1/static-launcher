@@ -1,6 +1,6 @@
 import { totalmem } from 'os'
 import { randomUUID } from 'crypto'
-import type { Account, Accent, CloseBehavior, PerformancePreset, Profile, ServerDef, Settings } from '@shared/types'
+import type { Account, Accent, CloseBehavior, PerformancePreset, Profile, ServerDef, Settings, SkinMeta } from '@shared/types'
 import { JsonStore } from './store'
 import { dataFile } from './paths'
 import { isId, isMcVersion, isUsername } from './lib/validate'
@@ -127,11 +127,20 @@ function sanitizeServers(raw: unknown): ServerDef[] {
     .slice(0, 100)
 }
 
+function sanitizeSkins(raw: unknown): SkinMeta[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((x) => x && typeof x === 'object' && isId(x.id) && typeof x.name === 'string')
+    .map((x) => ({ id: x.id, name: s(x.name, 'Skin', 40), slim: b(x.slim, false), addedAt: num(x.addedAt, Date.now(), 0, Number.MAX_SAFE_INTEGER) }))
+    .slice(0, 200)
+}
+
 export let settings: JsonStore<Settings>
 export let accounts: JsonStore<Account[]>
 export let profiles: JsonStore<Profile[]>
 export let stats: JsonStore<ProfileStats>
 export let userServers: JsonStore<ServerDef[]>
+export let skinLibrary: JsonStore<SkinMeta[]>
 
 export function initData(): void {
   settings = new JsonStore(dataFile('settings'), defaultSettings, sanitizeSettings)
@@ -139,8 +148,9 @@ export function initData(): void {
   profiles = new JsonStore(dataFile('profiles'), () => [], sanitizeProfiles)
   stats = new JsonStore(dataFile('stats'), () => ({}), sanitizeStats)
   userServers = new JsonStore(dataFile('servers'), () => [], sanitizeServers)
+  skinLibrary = new JsonStore(dataFile('skin-library'), () => [], sanitizeSkins)
 }
 
 export function flushAll(): void {
-  for (const st of [settings, accounts, profiles, stats, userServers]) st?.flush()
+  for (const st of [settings, accounts, profiles, stats, userServers, skinLibrary]) st?.flush()
 }

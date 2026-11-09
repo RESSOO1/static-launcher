@@ -204,6 +204,24 @@ export interface SystemInfo {
   dataDir: string
 }
 
+export interface PackProgress {
+  label: string
+  /** 0..1, or -1 when indeterminate */
+  progress: number
+  detail?: string
+}
+
+export interface SkinMeta {
+  id: string
+  name: string
+  slim: boolean
+  addedAt: number
+}
+
+export interface SkinItem extends SkinMeta {
+  url: string
+}
+
 export type UpdateState =
   | { state: 'idle' }
   | { state: 'checking' }

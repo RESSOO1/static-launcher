@@ -4,7 +4,7 @@ import type { BackupInfo, Screenshot, WorldInfo } from '@shared/types'
 import { call } from '@/lib/api'
 import { useApp } from '@/lib/store'
 import { ago, bytes } from '@/lib/format'
-import { Background, TopBar } from '@/components/Shell'
+import { TopBar } from '@/components/Shell'
 import { Confirm, Empty, Spinner, useAction } from '@/components/ui'
 
 type Tab = 'shots' | 'worlds' | 'backups'
@@ -52,7 +52,6 @@ export function Gallery() {
 
   return (
     <>
-      <Background dim />
       <TopBar title="Galeri & Dünyalar" />
       <div className="page">
         <div className="page-head">

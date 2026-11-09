@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { parseIndex, safeRelPath } from '../src/main/lib/mrpack'
 import { offlineUUID } from '../src/main/lib/offline'
 import { isSafeUrl, isUsername, parseAddress, safeFileName, splitArgs, isId, isMcVersion } from '../src/main/lib/validate'
 import { analyzeCrash } from '../src/main/lib/crash'
@@ -125,5 +126,37 @@ describe('log4j XML parser', () => {
   it('passes legacy plain logs through', () => {
     const p = new LogParser()
     expect(p.push('[12:00:00] [Client thread/WARN]: hi\n')[0]).toEqual({ level: 'warn', text: '[12:00:00] [Client thread/WARN]: hi' })
+  })
+})
+
+describe('mrpack', () => {
+  const hash = 'a'.repeat(128)
+  const pack = (over: object = {}, file: object = {}) => ({
+    formatVersion: 1,
+    game: 'minecraft',
+    name: 'Test',
+    dependencies: { minecraft: '1.21.1', 'fabric-loader': '0.16.0' },
+    files: [{ path: 'mods/a.jar', hashes: { sha512: hash }, downloads: ['https://cdn.modrinth.com/data/a.jar'], ...file }],
+    ...over
+  })
+  it('reads a normal Fabric pack and skips server-only files', () => {
+    const r = parseIndex(pack({}, {}))
+    expect(r.mcVersion).toBe('1.21.1')
+    expect(r.fabricVersion).toBe('0.16.0')
+    expect(r.files).toHaveLength(1)
+    expect(parseIndex(pack({}, { env: { client: 'unsupported' } })).files).toHaveLength(0)
+  })
+  it('refuses paths that leave the instance folder', () => {
+    for (const p of ['../evil.jar', 'mods/../../evil.jar', '/etc/x', 'C:\\Windows\\x.dll', 'mods\\..\\..\\x', 'a/./b', 'mods/x.', 'a:b']) expect(() => safeRelPath(p)).toThrow()
+    expect(safeRelPath('config/sodium\\options.json')).toBe('config/sodium/options.json')
+    expect(() => parseIndex(pack({}, { path: '../../evil.jar' }))).toThrow()
+  })
+  it('refuses unknown hosts, http and missing hashes', () => {
+    expect(() => parseIndex(pack({}, { downloads: ['https://evil.example/a.jar'] }))).toThrow()
+    expect(() => parseIndex(pack({}, { downloads: ['http://cdn.modrinth.com/a.jar'] }))).toThrow()
+    expect(() => parseIndex(pack({}, { hashes: {} }))).toThrow()
+  })
+  it('refuses non-Fabric packs', () => {
+    expect(() => parseIndex(pack({ dependencies: { minecraft: '1.20.1', forge: '47.0' } }))).toThrow()
   })
 })

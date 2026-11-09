@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { LoaderCircle, X } from 'lucide-react'
 
 export function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label?: string }) {
@@ -39,7 +40,7 @@ export function Modal({ title, icon, onClose, children, footer, wide, danger }: 
     window.addEventListener('keydown', k)
     return () => window.removeEventListener('keydown', k)
   }, [onClose])
-  return (
+  return createPortal(
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <div className="modal-head">
@@ -52,7 +53,8 @@ export function Modal({ title, icon, onClose, children, footer, wide, danger }: 
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.querySelector('.app') ?? document.body
   )
 }
 

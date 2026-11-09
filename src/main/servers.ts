@@ -59,6 +59,19 @@ export function addServer(name: unknown, address: unknown): ServerDef {
   return s
 }
 
+export function updateServer(id: unknown, name: unknown, address: unknown): ServerDef {
+  const i = str(id, 50)
+  const n = str(name, 40).trim() || 'Sunucu'
+  const a = str(address, 255).trim()
+  parseAddress(a)
+  const cur = userServers.get().find((s) => s.id === i)
+  if (!cur) throw new Error('Sunucu bulunamadı')
+  if (userServers.get().some((s) => s.id !== i && s.address.toLowerCase() === a.toLowerCase())) throw new Error('Bu adres listede zaten var')
+  const next: ServerDef = { ...cur, name: n, address: a }
+  userServers.update((l) => l.map((s) => (s.id === i ? next : s)))
+  return next
+}
+
 export function removeServer(id: unknown): void {
   const i = str(id, 50)
   userServers.update((l) => l.filter((s) => s.id !== i))

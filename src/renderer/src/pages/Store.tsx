@@ -1,24 +1,59 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Check, Download, FolderOpen, Heart, Image as ImageIcon, Package, Puzzle, Search, Sparkles, Trash2 } from 'lucide-react'
-import type { ContentType, InstalledMod, ModrinthHit } from '@shared/types'
-import { call } from '@/lib/api'
+import { Boxes, Check, Download, FolderOpen, Heart, Image as ImageIcon, Package, Puzzle, Search, Sparkles, Trash2, X } from 'lucide-react'
+import type { ContentType, InstalledMod, ModrinthHit, PackProgress, Profile } from '@shared/types'
+import { call, on } from '@/lib/api'
 import { useApp } from '@/lib/store'
 import { bytes, compact } from '@/lib/format'
-import { Background, TopBar } from '@/components/Shell'
-import { Empty, Seg, Spinner, Switch, useAction } from '@/components/ui'
+import { TopBar } from '@/components/Shell'
+import { Empty, Modal, Seg, Spinner, Switch, useAction } from '@/components/ui'
 import { versionLabel } from './Home'
 
-const TYPES: { value: ContentType; label: string; icon: React.ReactNode }[] = [
+type StoreType = ContentType | 'modpack'
+
+const TYPES: { value: StoreType; label: string; icon: React.ReactNode }[] = [
+  { value: 'modpack', label: 'Mod paketleri', icon: <Boxes /> },
   { value: 'mod', label: 'Modlar', icon: <Puzzle /> },
   { value: 'resourcepack', label: 'Kaynak paketleri', icon: <ImageIcon /> },
   { value: 'shader', label: 'Shader', icon: <Sparkles /> }
 ]
 const FOLDER: Record<ContentType, string> = { mod: 'mods', resourcepack: 'resourcepacks', shader: 'shaderpacks' }
 
+function PackDialog({ title, progress }: { title: string; progress: PackProgress | null }) {
+  const pct = progress && progress.progress >= 0 ? Math.round(progress.progress * 100) : null
+  return (
+    <Modal
+      title={`${title} kuruluyor`}
+      icon={<Boxes />}
+      onClose={() => void call('pack:cancel')}
+      footer={
+        <button className="btn" onClick={() => call('pack:cancel')}>
+          <X /> İptal
+        </button>
+      }
+    >
+      <div className="pack-progress">
+        <div className="row between small">
+          <span>{progress?.label ?? 'Hazırlanıyor'}</span>
+          <span className="muted">
+            {progress?.detail ? `${progress.detail} · ` : ''}
+            {pct === null ? '' : `%${pct}`}
+          </span>
+        </div>
+        <div className={`bar ${pct === null ? 'indeterminate' : ''}`}>
+          <i style={{ width: `${Math.max(2, pct ?? 0)}%` }} />
+        </div>
+        <span className="tiny muted">Bittiğinde paket için yeni bir profil oluşur ve seçili hale gelir.</span>
+      </div>
+    </Modal>
+  )
+}
+
 export function Store() {
-  const { profiles, selectedProfile, toast } = useApp()
+  const { profiles, selectedProfile, toast, refreshProfiles, setPage } = useApp()
   const [profileId, setProfileId] = useState(selectedProfile?.id ?? profiles[0]?.id ?? '')
-  const [type, setType] = useState<ContentType>('mod')
+  const [type, setType] = useState<StoreType>('modpack')
+  const [installingPack, setInstallingPack] = useState<string | null>(null)
+  const [packProgress, setPackProgress] = useState<PackProgress | null>(null)
   const [tab, setTab] = useState<'browse' | 'installed'>('browse')
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('relevance')
@@ -29,20 +64,23 @@ export function Store() {
   const { busy, run } = useAction(toast)
   const reqId = useRef(0)
   const profile = profiles.find((p) => p.id === profileId)
-  const blocked = type !== 'resourcepack' && profile?.loader === 'vanilla'
+  const isPack = type === 'modpack'
+  const blocked = (type === 'mod' || type === 'shader') && profile?.loader === 'vanilla'
+
+  useEffect(() => on<PackProgress>('pack:progress', setPackProgress), [])
 
   const loadInstalled = useCallback(() => {
-    if (!profileId) return
+    if (!profileId || isPack) return setInstalled([])
     call<InstalledMod[]>('content:list', profileId, type).then(setInstalled).catch(() => setInstalled([]))
-  }, [profileId, type])
+  }, [profileId, type, isPack])
 
   const searchNow = useCallback(
     async (offset: number) => {
-      if (!profileId || blocked) return
+      if ((!profileId && !isPack) || blocked) return
       const id = ++reqId.current
       setLoading(true)
       try {
-        const res = await call<{ hits: ModrinthHit[]; total: number }>('content:search', profileId, type, query, offset, sort)
+        const res = isPack ? await call<{ hits: ModrinthHit[]; total: number }>('pack:search', query, offset, sort) : await call<{ hits: ModrinthHit[]; total: number }>('content:search', profileId, type, query, offset, sort)
         if (id !== reqId.current) return
         setHits((h) => (offset ? [...h, ...res.hits] : res.hits))
         setTotal(res.total)
@@ -52,7 +90,7 @@ export function Store() {
         if (id === reqId.current) setLoading(false)
       }
     },
-    [profileId, type, query, sort, blocked, toast]
+    [profileId, type, isPack, query, sort, blocked, toast]
   )
 
   useEffect(() => {
@@ -63,16 +101,33 @@ export function Store() {
 
   const installedIds = new Set(installed.map((m) => m.projectId).filter(Boolean))
 
+  const installPack = async (h: ModrinthHit) => {
+    setPackProgress(null)
+    setInstallingPack(h.title)
+    try {
+      const p = await call<Profile>('pack:install', h.projectId, h.title)
+      await refreshProfiles()
+      toast('success', `${p.name} kuruldu. OYNA ile başlatabilirsin.`)
+      setPage('home')
+    } catch (e) {
+      toast('error', (e as Error).message)
+    } finally {
+      setInstallingPack(null)
+    }
+  }
+
   return (
     <>
-      <Background dim />
-      <TopBar title="Mod Mağazası" />
+      <TopBar title="Mağaza" />
       <div className="page">
         <div className="page-head">
           <div className="row wrap">
-            <Seg value={type} onChange={setType} options={TYPES} />
+            <Seg value={type} onChange={(t) => {
+              setType(t)
+              setTab('browse')
+            }} options={TYPES} />
           </div>
-          <div className="row">
+          {!isPack && <div className="row">
             <span className="muted small">Profil</span>
             <select className="select" style={{ width: 240 }} value={profileId} onChange={(e) => setProfileId(e.target.value)}>
               {profiles.map((p) => (
@@ -81,10 +136,10 @@ export function Store() {
                 </option>
               ))}
             </select>
-          </div>
+          </div>}
         </div>
 
-        <div className="tabs">
+        {!isPack && <div className="tabs">
           <button className={tab === 'browse' ? 'on' : ''} onClick={() => setTab('browse')}>
             <Search /> Keşfet
           </button>
@@ -92,16 +147,16 @@ export function Store() {
             <Package /> Yüklü <span className="tag">{installed.length}</span>
           </button>
           <div className="grow" />
-          <button className="btn sm ghost" onClick={() => call('shell:openFolder', FOLDER[type], profileId).catch((e) => toast('error', e.message))}>
+          <button className="btn sm ghost" onClick={() => call('shell:openFolder', FOLDER[type as ContentType], profileId).catch((e) => toast('error', e.message))}>
             <FolderOpen /> Klasörü aç
           </button>
-        </div>
+        </div>}
 
         {blocked ? (
           <div className="card">
             <Empty icon={<Puzzle />} title="Bu profil Vanilla" text="Mod ve shader kurmak için Fabric kullanan bir profil seç ya da Profiller sayfasından yeni bir Fabric profili oluştur." />
           </div>
-        ) : tab === 'browse' ? (
+        ) : isPack || tab === 'browse' ? (
           <>
             <div className="row" style={{ marginBottom: 16 }}>
               <div className="search" style={{ flex: 1 }}>
@@ -151,7 +206,7 @@ export function Store() {
                               className={`btn sm ${done ? '' : 'primary'}`}
                               disabled={busy === h.projectId}
                               onClick={() =>
-                                run(
+                                isPack ? void installPack(h) : run(
                                   h.projectId,
                                   async () => {
                                     const titles = await call<string[]>('content:install', profileId, h.projectId, type)
@@ -162,7 +217,7 @@ export function Store() {
                               }
                             >
                               {busy === h.projectId ? <Spinner size={13} /> : done ? <Check /> : <Download />}
-                              {done ? 'Güncelle' : 'Kur'}
+                              {done && !isPack ? 'Güncelle' : 'Kur'}
                             </button>
                           </div>
                         </div>
@@ -223,6 +278,7 @@ export function Store() {
           </div>
         )}
       </div>
+      {installingPack && <PackDialog title={installingPack} progress={packProgress} />}
     </>
   )
 }

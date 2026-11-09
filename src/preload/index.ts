@@ -4,19 +4,21 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 const INVOKE = new Set([
   'app:init', 'config:refresh', 'system:info', 'settings:set',
   'accounts:add', 'accounts:remove', 'accounts:select', 'accounts:list',
-  'skin:get', 'skin:default', 'skin:clear', 'skin:choose', 'skin:setSlim', 'skin:export',
+  'skin:get', 'skin:default', 'skin:clear', 'skin:setSlim', 'skin:export',
+  'skins:list', 'skins:add', 'skins:remove', 'skins:apply', 'skins:setSlim', 'skins:fetch',
+  'pack:search', 'pack:install', 'pack:cancel',
   'profiles:list', 'profiles:create', 'profiles:update', 'profiles:delete', 'profiles:select',
   'versions:list', 'versions:fabric',
   'game:play', 'game:cancel', 'game:kill', 'game:logs', 'game:repair',
   'content:search', 'content:install', 'content:list', 'content:toggle', 'content:remove',
-  'servers:list', 'servers:add', 'servers:remove', 'servers:ping',
+  'servers:list', 'servers:add', 'servers:update', 'servers:remove', 'servers:ping',
   'worlds:list', 'worlds:backup', 'backups:list', 'backups:restore', 'backups:delete',
   'shots:list', 'shots:delete',
   'shell:openFolder', 'shell:openExternal', 'clipboard:write', 'java:choose',
   'update:check', 'update:download', 'update:install',
   'win:minimize', 'win:maximize', 'win:close'
 ])
-const EVENTS = new Set(['game:progress', 'game:state', 'game:logs', 'game:crash', 'update:state', 'config:updated', 'win:maximized', 'dev:goto'])
+const EVENTS = new Set(['game:progress', 'game:state', 'game:logs', 'game:crash', 'update:state', 'config:updated', 'win:maximized', 'dev:goto', 'pack:progress'])
 
 const api = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {

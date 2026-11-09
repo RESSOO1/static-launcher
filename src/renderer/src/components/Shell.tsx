@@ -1,138 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Copy,
-  Download,
-  House,
-  Images,
-  Info,
-  Layers,
-  Maximize2,
-  Minimize2,
-  Minus,
-  Newspaper,
-  Package,
-  RefreshCw,
-  Server,
-  Settings as SettingsIcon,
-  Square,
-  Terminal,
-  Trash2,
-  UserRound,
-  X,
-  XCircle
-} from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Copy, Download, Info, Maximize2, Minimize2, Minus, RefreshCw, Square, Terminal, Trash2, X, XCircle } from 'lucide-react'
 import logo from '@/assets/logo.png'
 import { call, on } from '@/lib/api'
-import { useApp, type Page } from '@/lib/store'
-import { Avatar } from './Avatar'
+import { useApp } from '@/lib/store'
 import { Modal } from './ui'
-
-const NAV: { id: Page; label: string; icon: ReactNode }[] = [
-  { id: 'home', label: 'Ana Sayfa', icon: <House /> },
-  { id: 'profiles', label: 'Profiller', icon: <Layers /> },
-  { id: 'store', label: 'Mod Mağazası', icon: <Package /> },
-  { id: 'servers', label: 'Sunucular', icon: <Server /> },
-  { id: 'news', label: 'Haberler', icon: <Newspaper /> },
-  { id: 'gallery', label: 'Galeri & Dünyalar', icon: <Images /> }
-]
-
-export function Sidebar() {
-  const { page, setPage, config, update, system } = useApp()
-  const [seenNews, setSeenNews] = useState(() => {
-    try {
-      return localStorage.getItem('seenNews') ?? ''
-    } catch {
-      return ''
-    }
-  })
-  const latestNews = config.news[0]?.id ?? ''
-  const unread = latestNews && latestNews !== seenNews ? Math.min(9, config.news.findIndex((n) => n.id === seenNews) === -1 ? config.news.length : config.news.findIndex((n) => n.id === seenNews)) : 0
-
-  useEffect(() => {
-    if (page !== 'news' || !latestNews) return
-    setSeenNews(latestNews)
-    try {
-      localStorage.setItem('seenNews', latestNews)
-    } catch {
-      /* storage may be unavailable */
-    }
-  }, [page, latestNews])
-  const go = (p: Page) => setPage(p)
-
-  return (
-    <aside className="sidebar">
-      <div className="brand">
-        <img src={logo} alt="" />
-        <div>
-          <b>{config.name.toUpperCase()}</b>
-          <small>Launcher</small>
-        </div>
-      </div>
-      {NAV.map((n) => (
-        <button key={n.id} className={`nav ${page === n.id ? 'on' : ''}`} onClick={() => go(n.id)}>
-          {n.icon}
-          {n.label}
-          {n.id === 'news' && unread > 0 && <span className="badge">{unread}</span>}
-        </button>
-      ))}
-      <div className="nav-sep" />
-      <button className={`nav ${page === 'account' ? 'on' : ''}`} onClick={() => go('account')}>
-        <UserRound />
-        Hesap & Skin
-      </button>
-      <div className="grow" />
-      <button className={`nav ${page === 'settings' ? 'on' : ''}`} onClick={() => go('settings')}>
-        <SettingsIcon />
-        Ayarlar
-      </button>
-      <UpdateCard version={system.appVersion} update={update} />
-    </aside>
-  )
-}
-
-function UpdateCard({ version, update }: { version: string; update: ReturnType<typeof useApp>['update'] }) {
-  const { toast } = useApp()
-  if (update.state === 'available')
-    return (
-      <div className="update-banner">
-        <Download width={16} />
-        <div className="grow">
-          <b>Yeni sürüm {update.version}</b>
-        </div>
-        <button className="btn sm primary" onClick={() => call('update:download').catch((e) => toast('error', e.message))}>
-          İndir
-        </button>
-      </div>
-    )
-  if (update.state === 'downloading')
-    return (
-      <div className="update-banner">
-        <RefreshCw width={16} className="spin" />
-        <span>Güncelleme indiriliyor… %{update.percent}</span>
-      </div>
-    )
-  if (update.state === 'ready')
-    return (
-      <div className="update-banner">
-        <CheckCircle2 width={16} />
-        <div className="grow">Güncelleme hazır</div>
-        <button className="btn sm primary" onClick={() => call('update:install')}>
-          Yeniden başlat
-        </button>
-      </div>
-    )
-  return (
-    <div className="side-card">
-      <span className="dot" />
-      <div>
-        Launcher güncel
-        <small>Sürüm {version}</small>
-      </div>
-    </div>
-  )
-}
 
 export function WindowControls() {
   const [max, setMax] = useState(false)
@@ -152,43 +23,31 @@ export function WindowControls() {
   )
 }
 
-export function TopBar({ title, children }: { title?: string; children?: ReactNode }) {
-  const { selectedAccount, setPage } = useApp()
+/** The strip across the top of the window: drag area, name and window buttons. */
+export function TitleBar() {
+  const { system } = useApp()
   return (
-    <header className="topbar">
-      {title && <div className="page-title">{title}</div>}
-      {children}
-      <div className="spacer" />
-      <button className="user-chip" onClick={() => setPage('account')} title="Hesabı değiştir">
-        <div>
-          <b>{selectedAccount?.name ?? 'Misafir'}</b>
-          <small>Çevrimdışı hesap</small>
-        </div>
-        <Avatar accountId={selectedAccount?.id} hasSkin={selectedAccount?.hasSkin} />
-      </button>
+    <div className="titlebar">
+      <img src={logo} alt="" />
+      <b>Static Launcher</b>
+      <span>{system.appVersion}</span>
       <WindowControls />
-    </header>
+    </div>
   )
 }
 
-export function Background({ image, color, dim }: { image?: string; color?: string; dim?: boolean }) {
-  const [loaded, setLoaded] = useState<string | undefined>()
-  useEffect(() => {
-    if (!image) return setLoaded(undefined)
-    const img = new Image()
-    img.onload = () => setLoaded(image)
-    img.onerror = () => setLoaded(undefined)
-    img.src = image
-  }, [image])
+/** Header of the glass panel every page opens in. */
+export function TopBar({ title, children }: { title?: string; children?: ReactNode }) {
+  const { setPage } = useApp()
   return (
-    <div className={`bg ${dim ? 'dim' : ''}`} style={color ? ({ '--hero': color } as React.CSSProperties) : undefined}>
-      <div className="bg-aurora" />
-      <div className="blob b1" />
-      <div className="blob b2" />
-      <div className="pixels" />
-      <div className={`bg-img ${loaded ? 'on' : ''}`} style={loaded ? { backgroundImage: `url("${loaded}")` } : undefined} />
-      <div className="bg-shade" />
-    </div>
+    <header className="sheet-h">
+      {title && <h2>{title}</h2>}
+      {children}
+      <div className="spacer" />
+      <button className="btn ghost sm icon" onClick={() => setPage('home')} aria-label="Paneli kapat" title="Kapat">
+        <X />
+      </button>
+    </header>
   )
 }
 

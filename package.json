@@ -1,7 +1,7 @@
 {
   "name": "static-launcher",
   "productName": "Static Launcher",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Static Launcher - Minecraft launcher",
   "main": "./out/main/index.js",
   "author": "Static",
@@ -16,6 +16,7 @@
     "dist": "electron-vite build && electron-builder --win --x64 --config electron-builder.config.cjs --publish never"
   },
   "dependencies": {
+    "@fontsource/pixelify-sans": "5.3.0",
     "@xhayper/discord-rpc": "1.5.1",
     "@xmcl/core": "2.16.3",
     "@xmcl/installer": "6.3.7",

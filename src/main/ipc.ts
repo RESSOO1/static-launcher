@@ -11,6 +11,7 @@ import { listVersions, fabricLoaders } from './game/versions'
 import { ensureJava, ensureVersion } from './game/install'
 import * as mr from './modrinth'
 import * as srv from './servers'
+import * as pack from './modpack'
 import * as worlds from './worlds'
 import * as upd from './updater'
 import { backupsDir, instanceDir, logsDir, root } from './paths'
@@ -93,14 +94,12 @@ export function registerIpc(getWindow: () => BrowserWindow | null, dev?: string)
   handle('skin:get', (id: unknown) => acc.getSkinDataUrl(id))
   handle('skin:default', () => acc.getGameDefaultSkin())
   handle('skin:clear', (id: unknown) => acc.clearSkin(id))
-  handle('skin:choose', async (id: unknown, slim: unknown) => {
-    const win = getWindow()
-    const opts = { title: 'Skin seç', filters: [{ name: 'PNG', extensions: ['png'] }], properties: ['openFile' as const] }
-    const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
-    if (res.canceled || !res.filePaths[0]) return false
-    await acc.setSkin(id, res.filePaths[0], slim === true)
-    return true
-  })
+  handle('skins:list', (id: unknown) => acc.listSkins(id))
+  handle('skins:add', (name: unknown, url: unknown) => acc.addSkinData(name, url))
+  handle('skins:remove', (id: unknown) => acc.removeSkin(id))
+  handle('skins:apply', (accountId: unknown, id: unknown) => acc.applySkin(accountId, id))
+  handle('skins:setSlim', (id: unknown, slim: unknown) => acc.setSkinSlim(id, slim === true))
+  handle('skins:fetch', (name: unknown) => acc.fetchSkinByName(name))
   handle('skin:setSlim', (id: unknown, slim: unknown) => acc.setSlim(id, slim === true))
   // save the shown skin (e.g. the Static default) as a PNG the user picks a place for
   handle('skin:export', async (dataUrl: unknown, name: unknown) => {
@@ -155,9 +154,14 @@ export function registerIpc(getWindow: () => BrowserWindow | null, dev?: string)
   handle('content:toggle', (id: unknown, type: unknown, file: unknown) => mr.toggleContent(pid(id), oneOf(type, CONTENT), file))
   handle('content:remove', (id: unknown, type: unknown, file: unknown) => mr.removeContent(pid(id), oneOf(type, CONTENT), file))
 
+  handle('pack:search', (query: unknown, offset: unknown, sort: unknown) => pack.searchPacks(typeof query === 'string' ? query : '', int(offset ?? 0, 0, 10000), typeof sort === 'string' ? sort : 'relevance'))
+  handle('pack:install', (projectId: unknown, title: unknown) => pack.installPack(projectId, title, (p) => getWindow()?.webContents.send('pack:progress', p)))
+  handle('pack:cancel', () => pack.cancelPack())
+
   // servers
   handle('servers:list', () => srv.listServers())
   handle('servers:add', (name: unknown, address: unknown) => srv.addServer(name, address))
+  handle('servers:update', (id: unknown, name: unknown, address: unknown) => srv.updateServer(id, name, address))
   handle('servers:remove', (id: unknown) => srv.removeServer(id))
   handle('servers:ping', (address: unknown) => srv.pingServer(address))
 

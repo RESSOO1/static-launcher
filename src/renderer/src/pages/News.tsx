@@ -3,7 +3,7 @@ import logo from '@/assets/logo.png'
 import { openUrl } from '@/lib/api'
 import { useApp } from '@/lib/store'
 import { date } from '@/lib/format'
-import { Background, TopBar } from '@/components/Shell'
+import { TopBar } from '@/components/Shell'
 import { Empty } from '@/components/ui'
 
 export function News() {
@@ -11,7 +11,6 @@ export function News() {
   const [first, ...rest] = config.news
   return (
     <>
-      <Background dim />
       <TopBar title="Haberler" />
       <div className="page">
         {!first ? (
