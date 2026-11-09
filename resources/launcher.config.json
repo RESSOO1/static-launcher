@@ -1,0 +1,62 @@
+{
+  "name": "Static",
+  "tagline": "Oyna. Keşfet. Paylaş.",
+  "modes": [
+    {
+      "id": "survival",
+      "name": "Survival",
+      "description": "Klasik hayatta kalma deneyimi. Performans modları hazır kurulu, tek tıkla oyuna gir ve maceraya başla.",
+      "mcVersion": "1.21.1",
+      "loader": "fabric",
+      "mods": ["sodium", "lithium", "ferrite-core"],
+      "accent": "#8b5cf6"
+    },
+    {
+      "id": "classic",
+      "name": "Classic",
+      "description": "Efsanevi 1.8.9 PvP deneyimi. Hafif, hızlı ve rekabetçi.",
+      "mcVersion": "1.8.9",
+      "loader": "vanilla",
+      "accent": "#f59e0b"
+    },
+    {
+      "id": "vanilla",
+      "name": "Vanilla",
+      "description": "Minecraft'ın en güncel sürümü, hiçbir değişiklik olmadan saf haliyle.",
+      "mcVersion": "latest",
+      "loader": "vanilla",
+      "accent": "#10b981"
+    }
+  ],
+  "servers": [],
+  "news": [
+    {
+      "id": "welcome",
+      "title": "Static Launcher yayında!",
+      "body": "Yeni launcher'ımızla tanışın: tek tıkla kurulum, mod mağazası, sunucu durumu, dünya yedekleme ve çok daha fazlası.",
+      "date": "2026-11-04",
+      "tag": "Duyuru"
+    },
+    {
+      "id": "survival-season",
+      "title": "Survival modu performans paketiyle geliyor",
+      "body": "Survival modunda Sodium, Lithium ve FerriteCore otomatik kurulu gelir. Zayıf bilgisayarlarda bile akıcı oyun.",
+      "date": "2026-11-03",
+      "tag": "Güncelleme"
+    },
+    {
+      "id": "tips",
+      "title": "İpucu: Performans ön ayarları",
+      "body": "Ayarlar > Performans bölümünden bilgisayarına uygun ön ayarı seç; RAM ve Java ayarları otomatik yapılır.",
+      "date": "2026-11-01",
+      "tag": "İpucu"
+    }
+  ],
+  "links": {
+    "discord": "",
+    "website": ""
+  },
+  "discordClientId": "",
+  "remoteConfigUrl": "https://xn--statcpanel-0ub.com.tr/launcher/config.json",
+  "updateUrl": "https://xn--statcpanel-0ub.com.tr/launcher/updates/"
+}
