@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronUp, Plus } from 'lucide-react'
+import { Check, CheckCircle2, ChevronUp, Download, Plus, RefreshCw } from 'lucide-react'
 import { call } from '@/lib/api'
 import { useApp, type Page } from '@/lib/store'
 import { ram } from '@/lib/format'
@@ -93,18 +93,56 @@ function UpdateStatus() {
   const { update, system, toast } = useApp()
   if (update.state === 'available')
     return (
-      <button className="foot-link" onClick={() => call('update:download').catch((e) => toast('error', e.message))}>
-        Yeni sürüm {update.version}: indir
-      </button>
+      <div className="upd">
+        <div className="upd-ic">
+          <Download />
+        </div>
+        <div className="upd-t">
+          <b>Yeni sürüm</b>
+          <small>{update.version}</small>
+        </div>
+        <button className="btn sm primary" title={`Sürüm ${update.version} indir`} onClick={() => call('update:download').catch((e) => toast('error', e.message))}>
+          İndir
+        </button>
+      </div>
     )
-  if (update.state === 'downloading') return <span className="foot-up">Güncelleme indiriliyor %{update.percent}</span>
+  if (update.state === 'downloading')
+    return (
+      <div className="upd">
+        <div className="upd-ic" title={`Güncelleme indiriliyor %${update.percent}`}>
+          <RefreshCw className="spin" />
+        </div>
+        <div className="upd-t">
+          <b>İndiriliyor %{update.percent}</b>
+          <div className="bar">
+            <i style={{ width: `${Math.max(2, update.percent)}%` }} />
+          </div>
+        </div>
+      </div>
+    )
   if (update.state === 'ready')
     return (
-      <button className="foot-link" onClick={() => call('update:install')}>
-        Güncelleme hazır: yeniden başlat
-      </button>
+      <div className="upd">
+        <div className="upd-ic">
+          <CheckCircle2 />
+        </div>
+        <div className="upd-t">
+          <b>Kurulum hazır</b>
+          <small>{update.version}</small>
+        </div>
+        <button className="btn sm primary" title="Yeniden başlat ve kur" onClick={() => call('update:install')}>
+          Kur
+        </button>
+      </div>
     )
-  return <span className="foot-ok">Launcher güncel · {system.appVersion}</span>
+  return (
+    <div className="upd-idle">
+      <b>
+        <i className="dot" /> Launcher güncel
+      </b>
+      Sürüm {system.appVersion}
+    </div>
+  )
 }
 
 export function Dock() {

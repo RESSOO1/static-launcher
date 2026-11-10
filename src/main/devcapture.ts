@@ -19,6 +19,13 @@ export async function run(getWin: () => BrowserWindow | null, outDir: string): P
   const pages = (process.env.STATIC_CAPTURE_PAGES ?? 'home').split(',').filter(Boolean)
   await wait(Number(process.env.STATIC_CAPTURE_DELAY ?? 3500))
   for (const page of pages) {
+    // upd-downloading / upd-ready: preview the update states without a real download
+    if (page.startsWith('upd-')) {
+      getWin()?.webContents.send('update:state', page === 'upd-ready' ? { state: 'ready', version: '9.9.9' } : { state: 'downloading', percent: 62 })
+      await wait(500)
+      await snap(getWin, outDir, page)
+      continue
+    }
     getWin()?.webContents.send('dev:goto', page)
     await wait(1500)
     await snap(getWin, outDir, page)

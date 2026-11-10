@@ -111,15 +111,27 @@
 .modes-menu small { display: block; color: var(--muted); font-size: 11.5px; }
 .modes-menu svg { width: 15px; height: 15px; color: var(--v1); flex-shrink: 0; }
 
-.foot { position: absolute; bottom: 13px; max-width: 200px; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
-.foot.l { left: 16px; }
-.foot.r { right: 16px; text-align: right; }
+.foot { position: absolute; top: 50%; transform: translateY(-50%); font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.foot.l { left: 16px; max-width: 190px; }
+.foot.r { right: 16px; }
 .foot b { display: block; color: var(--text-2); font-weight: 500; font-size: 12px; }
-.foot-ok { color: var(--mint); }
-.foot-up { color: var(--text-2); }
-.foot-link { border: 0; background: none; padding: 0; color: var(--gold); font-weight: 600; text-align: right; }
-.foot-link:hover { text-decoration: underline; }
-@media (max-width: 1180px) { .foot { display: none; } .splash-text { display: none; } }
+.upd-idle { text-align: right; }
+.upd-idle b { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+.upd-idle .dot { width: 7px; height: 7px; background: var(--mint); box-shadow: 0 0 8px var(--mint); }
+.upd { display: flex; align-items: center; gap: 9px; width: 196px; padding: 8px; border-radius: 12px; border: 1px solid rgba(201, 166, 255, 0.45); background: linear-gradient(180deg, rgba(109, 51, 230, 0.34), rgba(58, 28, 122, 0.3)); box-shadow: 0 0 20px rgba(120, 60, 240, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+.upd-ic { flex-shrink: 0; width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; color: #fff; background: var(--v3); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+.upd-ic svg { width: 17px; height: 17px; }
+.upd-t { flex: 1; min-width: 0; }
+.upd-t b { color: #fff; font-weight: 600; white-space: nowrap; }
+.upd-t small { display: block; color: var(--text-2); font-size: 11px; white-space: nowrap; }
+.upd-t .bar { height: 5px; margin-top: 5px; }
+.upd .btn { flex-shrink: 0; padding: 0 10px; }
+@media (max-width: 1180px) {
+  .foot.l, .upd-idle, .splash-text { display: none; }
+  .foot.r { right: 10px; }
+  .upd { width: auto; flex-direction: column; gap: 5px; padding: 6px; }
+  .upd-t { display: none; }
+}
 
 /* ---------- glass panel for pages ---------- */
 .sheet { position: absolute; z-index: 5; left: 16px; right: 16px; top: 46px; bottom: 12px; border-radius: 15px; display: flex; flex-direction: column; overflow: hidden; background: rgba(14, 7, 30, 0.86); animation: sheet-in 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }

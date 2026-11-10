@@ -1,1 +1,1 @@
-• Deneme güncellemesi: güncelleme sisteminin çalıştığını doğrulamak için yayınlandı, yeni bir özellik yok.
+• Yeni güncelleme kartı ve küçük iyileştirmeler. Sürüm numaraları artık 1.1 ile devam ediyor.
