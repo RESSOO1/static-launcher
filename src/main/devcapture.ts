@@ -44,7 +44,7 @@ export async function run(getWin: () => BrowserWindow | null, outDir: string): P
   if (process.env.STATIC_AUTOPACK) {
     const { installPack } = await import('./modpack')
     let last = ''
-    const p = await installPack(process.env.STATIC_AUTOPACK, 'Test paketi', (x) => {
+    const res = await installPack(process.env.STATIC_AUTOPACK, 'Test paketi', (x) => {
       const line = `${x.label} ${x.detail ?? ''}`
       if (line !== last) console.log(`[autopack] ${line}`)
       last = line
@@ -52,6 +52,8 @@ export async function run(getWin: () => BrowserWindow | null, outDir: string): P
       console.log(`[autopack] HATA: ${e.message}`)
       return null
     })
+    const p = res?.profile ?? null
+    if (res?.missing.length) console.log(`[autopack] indirilemeyen: ${res.missing.join(', ')}`)
     console.log(`[autopack] ${p ? `kuruldu: ${p.id} ${p.mcVersion} fabric ${p.loaderVersion}` : 'kurulamadı'}`)
     if (p && process.env.STATIC_AUTOPLAY === 'pack') process.env.STATIC_AUTOPLAY = p.id
   }

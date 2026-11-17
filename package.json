@@ -1,7 +1,7 @@
 {
   "name": "static-launcher",
   "productName": "Static Launcher",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Static Launcher - Minecraft launcher",
   "main": "./out/main/index.js",
   "author": "Static",

@@ -9,14 +9,14 @@ import * as prof from './profiles'
 import * as game from './game/launch'
 import { listVersions, fabricLoaders } from './game/versions'
 import { ensureJava, ensureVersion } from './game/install'
-import * as mr from './modrinth'
+import * as mr from './content'
 import * as cf from './curseforge'
 import * as srv from './servers'
 import * as pack from './modpack'
 import * as worlds from './worlds'
 import * as upd from './updater'
 import { backupsDir, instanceDir, logsDir, root } from './paths'
-import { isId, isSafeUrl, oneOf, str, int } from './lib/validate'
+import { isId, isSafeUrl, oneOf, str } from './lib/validate'
 import { log, errorMessage } from './log'
 
 const CONTENT: readonly ContentType[] = ['mod', 'resourcepack', 'shader']
@@ -147,17 +147,15 @@ export function registerIpc(getWindow: () => BrowserWindow | null, dev?: string)
   })
 
   // content (mods, resource packs, shaders)
-  handle('content:search', (id: unknown, type: unknown, query: unknown, offset: unknown, sort: unknown) =>
-    mr.search(typeof query === 'string' ? query : '', oneOf(type, CONTENT), prof.getProfile(pid(id)), int(offset ?? 0, 0, 10000), typeof sort === 'string' ? sort : 'relevance')
+  handle('content:search', (id: unknown, type: unknown, query: unknown) =>
+    cf.cfList(oneOf(type, CONTENT), prof.getProfile(pid(id)), typeof query === 'string' ? query.slice(0, 100) : '')
   )
-  handle('content:install', (id: unknown, projectId: unknown, type: unknown) => mr.installProject(prof.getProfile(pid(id)), str(projectId, 64), oneOf(type, CONTENT)))
-  handle('content:cfList', (id: unknown, query: unknown) => cf.cfList(prof.getProfile(pid(id)), str(query ?? '', 100)))
-  handle('content:cfInstall', (id: unknown, projectId: unknown) => cf.cfInstall(prof.getProfile(pid(id)), str(projectId, 20)))
+  handle('content:install', (id: unknown, projectId: unknown, type: unknown) => cf.cfInstall(prof.getProfile(pid(id)), str(projectId, 20), oneOf(type, CONTENT)))
   handle('content:list', (id: unknown, type: unknown) => mr.listInstalled(pid(id), oneOf(type, CONTENT)))
   handle('content:toggle', (id: unknown, type: unknown, file: unknown) => mr.toggleContent(pid(id), oneOf(type, CONTENT), file))
   handle('content:remove', (id: unknown, type: unknown, file: unknown) => mr.removeContent(pid(id), oneOf(type, CONTENT), file))
 
-  handle('pack:search', (query: unknown, offset: unknown, sort: unknown) => pack.searchPacks(typeof query === 'string' ? query : '', int(offset ?? 0, 0, 10000), typeof sort === 'string' ? sort : 'relevance'))
+  handle('pack:search', (query: unknown) => pack.searchPacks(typeof query === 'string' ? query.slice(0, 100) : ''))
   handle('pack:install', (projectId: unknown, title: unknown) => pack.installPack(projectId, title, (p) => getWindow()?.webContents.send('pack:progress', p)))
   handle('pack:cancel', () => pack.cancelPack())
 

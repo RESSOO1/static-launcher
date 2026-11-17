@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Boxes, Check, Download, FolderOpen, Heart, Image as ImageIcon, Package, Puzzle, Search, Sparkles, Trash2, X } from 'lucide-react'
+import { Boxes, Check, Download, FolderOpen, Image as ImageIcon, Package, Puzzle, Search, Sparkles, Trash2, X } from 'lucide-react'
 import type { ContentType, InstalledMod, ModrinthHit, PackProgress, Profile } from '@shared/types'
 import { call, on } from '@/lib/api'
 import { useApp } from '@/lib/store'
@@ -56,17 +56,13 @@ export function Store() {
   const [packProgress, setPackProgress] = useState<PackProgress | null>(null)
   const [tab, setTab] = useState<'browse' | 'installed'>('browse')
   const [query, setQuery] = useState('')
-  const [sort, setSort] = useState('relevance')
-  const [source, setSource] = useState<'modrinth' | 'curseforge'>('modrinth')
   const [hits, setHits] = useState<ModrinthHit[]>([])
-  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [installed, setInstalled] = useState<InstalledMod[]>([])
   const { busy, run } = useAction(toast)
   const reqId = useRef(0)
   const profile = profiles.find((p) => p.id === profileId)
   const isPack = type === 'modpack'
-  const isCf = type === 'mod' && source === 'curseforge'
   const blocked = (type === 'mod' || type === 'shader') && profile?.loader === 'vanilla'
 
   useEffect(() => on<PackProgress>('pack:progress', setPackProgress), [])
@@ -77,26 +73,25 @@ export function Store() {
   }, [profileId, type, isPack])
 
   const searchNow = useCallback(
-    async (offset: number) => {
-      if ((!profileId && !isPack) || blocked || (isCf && offset)) return
+    async () => {
+      if ((!profileId && !isPack) || blocked) return
       const id = ++reqId.current
       setLoading(true)
       try {
-        const res = isCf ? await call<{ hits: ModrinthHit[]; total: number }>('content:cfList', profileId, query) : isPack ? await call<{ hits: ModrinthHit[]; total: number }>('pack:search', query, offset, sort) : await call<{ hits: ModrinthHit[]; total: number }>('content:search', profileId, type, query, offset, sort)
+        const res = isPack ? await call<{ hits: ModrinthHit[] }>('pack:search', query) : await call<{ hits: ModrinthHit[] }>('content:search', profileId, type, query)
         if (id !== reqId.current) return
-        setHits((h) => (offset ? [...h, ...res.hits] : res.hits))
-        setTotal(res.total)
+        setHits(res.hits)
       } catch (e) {
         if (id === reqId.current) toast('error', (e as Error).message)
       } finally {
         if (id === reqId.current) setLoading(false)
       }
     },
-    [profileId, type, isPack, isCf, query, sort, blocked, toast]
+    [profileId, type, isPack, query, blocked, toast]
   )
 
   useEffect(() => {
-    const t = setTimeout(() => void searchNow(0), 350)
+    const t = setTimeout(() => void searchNow(), 350)
     return () => clearTimeout(t)
   }, [searchNow])
   useEffect(loadInstalled, [loadInstalled])
@@ -107,9 +102,10 @@ export function Store() {
     setPackProgress(null)
     setInstallingPack(h.title)
     try {
-      const p = await call<Profile>('pack:install', h.projectId, h.title)
+      const { profile: p, missing } = await call<{ profile: Profile; missing: string[] }>('pack:install', h.projectId, h.title)
       await refreshProfiles()
-      toast('success', `${p.name} kuruldu. OYNA ile başlatabilirsin.`)
+      if (missing.length) toast('error', `${p.name} kuruldu ama ${missing.length} mod yazarı launcher'dan indirmeye izin vermiyor: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? '…' : ''}. Bunları CurseForge sitesinden indirip mods klasörüne atabilirsin.`)
+      else toast('success', `${p.name} kuruldu. OYNA ile başlatabilirsin.`)
       setPage('home')
     } catch (e) {
       toast('error', (e as Error).message)
@@ -160,21 +156,13 @@ export function Store() {
           </div>
         ) : isPack || tab === 'browse' ? (
           <>
-            <div className="row" style={{ marginBottom: isCf ? 8 : 16 }}>
-              {type === 'mod' && <Seg value={source} onChange={(v) => { setHits([]); setSource(v) }} options={[{ value: 'modrinth', label: 'Modrinth' }, { value: 'curseforge', label: 'CurseForge' }]} />}
+            <div className="row" style={{ marginBottom: 8 }}>
               <div className="search" style={{ flex: 1 }}>
                 <Search />
-                <input className="input" placeholder={isCf ? 'Listede ara ya da CurseForge proje numarası yaz…' : `${TYPES.find((t) => t.value === type)?.label} içinde ara…`} value={query} onChange={(e) => setQuery(e.target.value)} />
+                <input className="input" placeholder="Listede ara ya da CurseForge proje numarası yaz…" value={query} onChange={(e) => setQuery(e.target.value)} />
               </div>
-              {!isCf && <select className="select" style={{ width: 190 }} value={sort} onChange={(e) => setSort(e.target.value)}>
-                <option value="relevance">En alakalı</option>
-                <option value="downloads">En çok indirilen</option>
-                <option value="follows">En popüler</option>
-                <option value="newest">En yeni</option>
-                <option value="updated">Son güncellenen</option>
-              </select>}
             </div>
-            {isCf && <p className="tiny muted" style={{ margin: '0 0 16px' }}>CurseForge'da şimdilik öne çıkan ve popüler modlar listelenir. Listede olmayan bir mod için sayfasındaki "Project ID" numarasını yaz.</p>}
+            <p className="tiny muted" style={{ margin: '0 0 16px' }}>İçerikler CurseForge'dan gelir. Şimdilik öne çıkan ve popüler olanlar listelenir; listede olmayan bir şey için CurseForge sayfasındaki "Project ID" numarasını yaz.</p>
             {loading && !hits.length ? (
               <div className="grid g3">
                 {Array.from({ length: 9 }).map((_, i) => (
@@ -202,9 +190,6 @@ export function Store() {
                               <span className="row" style={{ gap: 4 }}>
                                 <Download width={12} /> {compact(h.downloads)}
                               </span>
-                              {!isCf && <span className="row" style={{ gap: 4 }}>
-                                <Heart width={12} /> {compact(h.follows)}
-                              </span>}
                             </div>
                             <button
                               className={`btn sm ${done ? '' : 'primary'}`}
@@ -213,7 +198,7 @@ export function Store() {
                                 isPack ? void installPack(h) : run(
                                   h.projectId,
                                   async () => {
-                                    const titles = isCf ? await call<string[]>('content:cfInstall', profileId, h.projectId) : await call<string[]>('content:install', profileId, h.projectId, type)
+                                    const titles = await call<string[]>('content:install', profileId, h.projectId, type)
                                     loadInstalled()
                                     toast('success', titles.length > 1 ? `${titles[0]} ve ${titles.length - 1} bağımlılık kuruldu` : `${titles[0] ?? h.title} kuruldu`)
                                   }
@@ -229,13 +214,6 @@ export function Store() {
                     )
                   })}
                 </div>
-                {hits.length < total && (
-                  <div className="row" style={{ justifyContent: 'center', marginTop: 18 }}>
-                    <button className="btn" disabled={loading} onClick={() => searchNow(hits.length)}>
-                      {loading && <Spinner size={14} />} Daha fazla göster
-                    </button>
-                  </div>
-                )}
               </>
             )}
           </>

@@ -1,6 +1,5 @@
-import { filterCf, pickCfFile, sameName } from '../src/main/lib/cf'
+import { filterCf, parseCfManifest, pickCfFile, safeRelPath, sameName } from '../src/main/lib/cf'
 import { describe, expect, it } from 'vitest'
-import { parseIndex, safeRelPath } from '../src/main/lib/mrpack'
 import { offlineUUID } from '../src/main/lib/offline'
 import { isSafeUrl, isUsername, parseAddress, safeFileName, splitArgs, isId, isMcVersion } from '../src/main/lib/validate'
 import { analyzeCrash } from '../src/main/lib/crash'
@@ -130,35 +129,32 @@ describe('log4j XML parser', () => {
   })
 })
 
-describe('mrpack', () => {
-  const hash = 'a'.repeat(128)
-  const pack = (over: object = {}, file: object = {}) => ({
-    formatVersion: 1,
-    game: 'minecraft',
+describe('CurseForge mod paketi', () => {
+  const pack = (over: object = {}, mc: object = {}) => ({
+    manifestType: 'minecraftModpack',
     name: 'Test',
-    dependencies: { minecraft: '1.21.1', 'fabric-loader': '0.16.0' },
-    files: [{ path: 'mods/a.jar', hashes: { sha512: hash }, downloads: ['https://cdn.modrinth.com/data/a.jar'], ...file }],
+    overrides: 'overrides',
+    minecraft: { version: '1.21.1', modLoaders: [{ id: 'fabric-0.16.0', primary: true }], ...mc },
+    files: [{ projectID: 1, fileID: 2, required: true }, { projectID: 3, fileID: 4, required: false }],
     ...over
   })
-  it('reads a normal Fabric pack and skips server-only files', () => {
-    const r = parseIndex(pack({}, {}))
+  it('reads a normal Fabric pack', () => {
+    const r = parseCfManifest(pack())
     expect(r.mcVersion).toBe('1.21.1')
     expect(r.fabricVersion).toBe('0.16.0')
-    expect(r.files).toHaveLength(1)
-    expect(parseIndex(pack({}, { env: { client: 'unsupported' } })).files).toHaveLength(0)
+    expect(r.files).toEqual([{ projectId: 1, fileId: 2, required: true }, { projectId: 3, fileId: 4, required: false }])
+    expect(r.overrides).toBe('overrides')
   })
   it('refuses paths that leave the instance folder', () => {
     for (const p of ['../evil.jar', 'mods/../../evil.jar', '/etc/x', 'C:\\Windows\\x.dll', 'mods\\..\\..\\x', 'a/./b', 'mods/x.', 'a:b']) expect(() => safeRelPath(p)).toThrow()
     expect(safeRelPath('config/sodium\\options.json')).toBe('config/sodium/options.json')
-    expect(() => parseIndex(pack({}, { path: '../../evil.jar' }))).toThrow()
+    expect(() => parseCfManifest(pack({ overrides: '../..' }))).toThrow()
   })
-  it('refuses unknown hosts, http and missing hashes', () => {
-    expect(() => parseIndex(pack({}, { downloads: ['https://evil.example/a.jar'] }))).toThrow()
-    expect(() => parseIndex(pack({}, { downloads: ['http://cdn.modrinth.com/a.jar'] }))).toThrow()
-    expect(() => parseIndex(pack({}, { hashes: {} }))).toThrow()
-  })
-  it('refuses non-Fabric packs', () => {
-    expect(() => parseIndex(pack({ dependencies: { minecraft: '1.20.1', forge: '47.0' } }))).toThrow()
+  it('refuses bad file lists and non-Fabric packs', () => {
+    expect(() => parseCfManifest(pack({ files: [{ projectID: 'x', fileID: 2 }] }))).toThrow()
+    expect(() => parseCfManifest(pack({ manifestType: 'other' }))).toThrow()
+    expect(() => parseCfManifest(pack({}, { modLoaders: [{ id: 'forge-47.0', primary: true }] }))).toThrow(/Forge/)
+    expect(() => parseCfManifest(pack({}, { version: '1.21;rm' }))).toThrow()
   })
 })
 
@@ -168,10 +164,17 @@ describe('CurseForge vitrini', () => {
     { gameVersion: '1.21.1', fileId: 2, modLoader: 4 },
     { gameVersion: '1.20.1', fileId: 1, modLoader: 4 }
   ]
-  it('profile uyan Fabric dosyasını seçer', () => {
-    expect(pickCfFile(files, '1.21.1')).toBe(2)
-    expect(pickCfFile(files, '1.19')).toBeUndefined()
-    expect(pickCfFile([{ gameVersion: '1.21.1', fileId: 9, modLoader: null }], '1.21.1')).toBeUndefined()
+  it('profile uyan dosyayı seçer', () => {
+    expect(pickCfFile({ files }, '1.21.1')).toBe(2)
+    expect(pickCfFile({ files }, '1.19')).toBeUndefined()
+    expect(pickCfFile({ files: [{ gameVersion: '1.21.1', fileId: 9, modLoader: null }] }, '1.21.1')).toBeUndefined()
+    // kararlı sürüm deneme sürümünden önce gelir
+    expect(pickCfFile({ files: [{ gameVersion: '1.21.1', fileId: 8, modLoader: 4, release: false }, { gameVersion: '1.21.1', fileId: 7, modLoader: 4, release: true }] }, '1.21.1')).toBe(7)
+    // mod paketi: sürüm paketten gelir, Fabric olmalı
+    expect(pickCfFile({ files }, '', 'modpack')).toBe(2)
+    expect(pickCfFile({ files: [{ gameVersion: '1.20.1', fileId: 5, modLoader: 1 }] }, '', 'modpack')).toBeUndefined()
+    // kaynak paketi: sürüme uyan yoksa ana dosya
+    expect(pickCfFile({ files: [], mainFileId: 11 }, '1.21.1', 'resourcepack')).toBe(11)
   })
   it('vitrin içinde arar', () => {
     const m = (name: string, summary = '') => ({ id: 1, name, summary, author: '', downloads: 0, distribution: true, files: [] })
