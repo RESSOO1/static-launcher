@@ -12,8 +12,8 @@ const API = 'https://api.modrinth.com/v2'
 const CDN_HOSTS = ['cdn.modrinth.com']
 const PROJECT_RE = /^[a-zA-Z0-9_-]{2,64}$/
 
-const FOLDER: Record<ContentType, string> = { mod: 'mods', resourcepack: 'resourcepacks', shader: 'shaderpacks' }
-const EXT: Record<ContentType, string[]> = { mod: ['.jar', '.jar.disabled'], resourcepack: ['.zip', '.zip.disabled'], shader: ['.zip', '.zip.disabled'] }
+export const FOLDER: Record<ContentType, string> = { mod: 'mods', resourcepack: 'resourcepacks', shader: 'shaderpacks' }
+export const EXT: Record<ContentType, string[]> = { mod: ['.jar', '.jar.disabled'], resourcepack: ['.zip', '.zip.disabled'], shader: ['.zip', '.zip.disabled'] }
 
 interface ManifestEntry {
   projectId: string
@@ -27,7 +27,7 @@ type Manifest = Record<string, ManifestEntry>
 
 const manifestPath = (pid: string) => join(instanceDir(pid), '.static-content.json')
 
-async function readManifest(pid: string): Promise<Manifest> {
+export async function readManifest(pid: string): Promise<Manifest> {
   try {
     const raw = JSON.parse(await readFile(manifestPath(pid), 'utf8'))
     return raw && typeof raw === 'object' ? raw : {}
@@ -36,7 +36,7 @@ async function readManifest(pid: string): Promise<Manifest> {
   }
 }
 
-async function writeManifest(pid: string, m: Manifest): Promise<void> {
+export async function writeManifest(pid: string, m: Manifest): Promise<void> {
   await mkdir(instanceDir(pid), { recursive: true })
   const tmp = manifestPath(pid) + '.tmp'
   await writeFile(tmp, JSON.stringify(m, null, 2))

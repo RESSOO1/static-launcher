@@ -10,6 +10,7 @@ import * as game from './game/launch'
 import { listVersions, fabricLoaders } from './game/versions'
 import { ensureJava, ensureVersion } from './game/install'
 import * as mr from './modrinth'
+import * as cf from './curseforge'
 import * as srv from './servers'
 import * as pack from './modpack'
 import * as worlds from './worlds'
@@ -150,6 +151,8 @@ export function registerIpc(getWindow: () => BrowserWindow | null, dev?: string)
     mr.search(typeof query === 'string' ? query : '', oneOf(type, CONTENT), prof.getProfile(pid(id)), int(offset ?? 0, 0, 10000), typeof sort === 'string' ? sort : 'relevance')
   )
   handle('content:install', (id: unknown, projectId: unknown, type: unknown) => mr.installProject(prof.getProfile(pid(id)), str(projectId, 64), oneOf(type, CONTENT)))
+  handle('content:cfList', (id: unknown, query: unknown) => cf.cfList(prof.getProfile(pid(id)), str(query ?? '', 100)))
+  handle('content:cfInstall', (id: unknown, projectId: unknown) => cf.cfInstall(prof.getProfile(pid(id)), str(projectId, 20)))
   handle('content:list', (id: unknown, type: unknown) => mr.listInstalled(pid(id), oneOf(type, CONTENT)))
   handle('content:toggle', (id: unknown, type: unknown, file: unknown) => mr.toggleContent(pid(id), oneOf(type, CONTENT), file))
   handle('content:remove', (id: unknown, type: unknown, file: unknown) => mr.removeContent(pid(id), oneOf(type, CONTENT), file))

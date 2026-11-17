@@ -1,3 +1,4 @@
+import { filterCf, pickCfFile, sameName } from '../src/main/lib/cf'
 import { describe, expect, it } from 'vitest'
 import { parseIndex, safeRelPath } from '../src/main/lib/mrpack'
 import { offlineUUID } from '../src/main/lib/offline'
@@ -158,5 +159,30 @@ describe('mrpack', () => {
   })
   it('refuses non-Fabric packs', () => {
     expect(() => parseIndex(pack({ dependencies: { minecraft: '1.20.1', forge: '47.0' } }))).toThrow()
+  })
+})
+
+describe('CurseForge vitrini', () => {
+  const files = [
+    { gameVersion: '1.21.1', fileId: 3, modLoader: 6 },
+    { gameVersion: '1.21.1', fileId: 2, modLoader: 4 },
+    { gameVersion: '1.20.1', fileId: 1, modLoader: 4 }
+  ]
+  it('profile uyan Fabric dosyasını seçer', () => {
+    expect(pickCfFile(files, '1.21.1')).toBe(2)
+    expect(pickCfFile(files, '1.19')).toBeUndefined()
+    expect(pickCfFile([{ gameVersion: '1.21.1', fileId: 9, modLoader: null }], '1.21.1')).toBeUndefined()
+  })
+  it('vitrin içinde arar', () => {
+    const m = (name: string, summary = '') => ({ id: 1, name, summary, author: '', downloads: 0, distribution: true, files: [] })
+    expect(filterCf([m('Just Enough Items'), m('Sodium', 'İyileştirme')], 'items').map((x) => x.name)).toEqual(['Just Enough Items'])
+    expect(filterCf([m('Sodium', 'İyileştirme')], 'iyileş')).toHaveLength(1)
+    expect(filterCf([m('a'), m('b')], '  ')).toHaveLength(2)
+  })
+  it('aynı modu farklı kaynaktan tanır', () => {
+    expect(sameName('Fabric API', 'fabric-api')).toBe(true)
+    expect(sameName('Lithium (Fabric/NeoForge)', 'Lithium')).toBe(true)
+    expect(sameName('Sodium', 'Sodium Extra')).toBe(false)
+    expect(sameName('()', '')).toBe(false)
   })
 })

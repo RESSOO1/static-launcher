@@ -57,6 +57,7 @@ export function Store() {
   const [tab, setTab] = useState<'browse' | 'installed'>('browse')
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('relevance')
+  const [source, setSource] = useState<'modrinth' | 'curseforge'>('modrinth')
   const [hits, setHits] = useState<ModrinthHit[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -65,6 +66,7 @@ export function Store() {
   const reqId = useRef(0)
   const profile = profiles.find((p) => p.id === profileId)
   const isPack = type === 'modpack'
+  const isCf = type === 'mod' && source === 'curseforge'
   const blocked = (type === 'mod' || type === 'shader') && profile?.loader === 'vanilla'
 
   useEffect(() => on<PackProgress>('pack:progress', setPackProgress), [])
@@ -76,11 +78,11 @@ export function Store() {
 
   const searchNow = useCallback(
     async (offset: number) => {
-      if ((!profileId && !isPack) || blocked) return
+      if ((!profileId && !isPack) || blocked || (isCf && offset)) return
       const id = ++reqId.current
       setLoading(true)
       try {
-        const res = isPack ? await call<{ hits: ModrinthHit[]; total: number }>('pack:search', query, offset, sort) : await call<{ hits: ModrinthHit[]; total: number }>('content:search', profileId, type, query, offset, sort)
+        const res = isCf ? await call<{ hits: ModrinthHit[]; total: number }>('content:cfList', profileId, query) : isPack ? await call<{ hits: ModrinthHit[]; total: number }>('pack:search', query, offset, sort) : await call<{ hits: ModrinthHit[]; total: number }>('content:search', profileId, type, query, offset, sort)
         if (id !== reqId.current) return
         setHits((h) => (offset ? [...h, ...res.hits] : res.hits))
         setTotal(res.total)
@@ -90,7 +92,7 @@ export function Store() {
         if (id === reqId.current) setLoading(false)
       }
     },
-    [profileId, type, isPack, query, sort, blocked, toast]
+    [profileId, type, isPack, isCf, query, sort, blocked, toast]
   )
 
   useEffect(() => {
@@ -158,19 +160,21 @@ export function Store() {
           </div>
         ) : isPack || tab === 'browse' ? (
           <>
-            <div className="row" style={{ marginBottom: 16 }}>
+            <div className="row" style={{ marginBottom: isCf ? 8 : 16 }}>
+              {type === 'mod' && <Seg value={source} onChange={(v) => { setHits([]); setSource(v) }} options={[{ value: 'modrinth', label: 'Modrinth' }, { value: 'curseforge', label: 'CurseForge' }]} />}
               <div className="search" style={{ flex: 1 }}>
                 <Search />
-                <input className="input" placeholder={`${TYPES.find((t) => t.value === type)?.label} içinde ara…`} value={query} onChange={(e) => setQuery(e.target.value)} />
+                <input className="input" placeholder={isCf ? 'Listede ara ya da CurseForge proje numarası yaz…' : `${TYPES.find((t) => t.value === type)?.label} içinde ara…`} value={query} onChange={(e) => setQuery(e.target.value)} />
               </div>
-              <select className="select" style={{ width: 190 }} value={sort} onChange={(e) => setSort(e.target.value)}>
+              {!isCf && <select className="select" style={{ width: 190 }} value={sort} onChange={(e) => setSort(e.target.value)}>
                 <option value="relevance">En alakalı</option>
                 <option value="downloads">En çok indirilen</option>
                 <option value="follows">En popüler</option>
                 <option value="newest">En yeni</option>
                 <option value="updated">Son güncellenen</option>
-              </select>
+              </select>}
             </div>
+            {isCf && <p className="tiny muted" style={{ margin: '0 0 16px' }}>CurseForge'da şimdilik öne çıkan ve popüler modlar listelenir. Listede olmayan bir mod için sayfasındaki "Project ID" numarasını yaz.</p>}
             {loading && !hits.length ? (
               <div className="grid g3">
                 {Array.from({ length: 9 }).map((_, i) => (
@@ -198,9 +202,9 @@ export function Store() {
                               <span className="row" style={{ gap: 4 }}>
                                 <Download width={12} /> {compact(h.downloads)}
                               </span>
-                              <span className="row" style={{ gap: 4 }}>
+                              {!isCf && <span className="row" style={{ gap: 4 }}>
                                 <Heart width={12} /> {compact(h.follows)}
-                              </span>
+                              </span>}
                             </div>
                             <button
                               className={`btn sm ${done ? '' : 'primary'}`}
@@ -209,7 +213,7 @@ export function Store() {
                                 isPack ? void installPack(h) : run(
                                   h.projectId,
                                   async () => {
-                                    const titles = await call<string[]>('content:install', profileId, h.projectId, type)
+                                    const titles = isCf ? await call<string[]>('content:cfInstall', profileId, h.projectId) : await call<string[]>('content:install', profileId, h.projectId, type)
                                     loadInstalled()
                                     toast('success', titles.length > 1 ? `${titles[0]} ve ${titles.length - 1} bağımlılık kuruldu` : `${titles[0] ?? h.title} kuruldu`)
                                   }
